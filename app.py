@@ -136,12 +136,24 @@ def get_product(product_id):
 def add_product():
     if not request.json:
         return "Invalid input", 400
-    last_product = collection.find_one(sort=[("id", -1)])
-    new_id = (last_product['id'] + 1) if last_product else 1
+    # Find the latest document that actually has an id field.
+    last_product = collection.find_one(
+        {"id": {"$exists": True}},
+        {"id": 1},
+        sort=[("id", -1)]
+    )
+    last_id = 0
+    if last_product:
+        try:
+            last_id = int(last_product.get("id", 0))
+        except (TypeError, ValueError):
+            last_id = 0
+
+    new_id = last_id + 1
     new_product = request.json
     new_product['id'] = new_id
     collection.insert_one(new_product)
-    del new_product['_id']
+    new_product.pop('_id', None)
     return jsonify(new_product)
 
 # Update a product
